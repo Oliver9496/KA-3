@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>双语对照检索工具</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.4/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        input, button {
+            padding: 10px;
+            font-size: 16px;
+        }
+        #results {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>双语对照检索工具</h1>
+    <input type="file" id="fileInput" accept=".xlsx, .xls" />
+    <input type="text" id="keywordInput" placeholder="输入关键词（支持模糊检索）" />
+    <button onclick="search()">检索</button>
+
+    <div id="results"></div>
+
+    <script>
+        let bilingualData = [];
+
+        // 读取Excel文件
+        document.getElementById('fileInput').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                bilingualData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                console.log('Excel文件已加载:', bilingualData);
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        // 模糊检索功能
+        function search() {
+            const keyword = document.getElementById('keywordInput').value.trim().toLowerCase();
+            if (!keyword) {
+                alert('请输入关键词');
+                return;
+            }
+
+            const results = [];
+            for (let i = 0; i < bilingualData.length; i++) {
+                const row = bilingualData[i];
+                if (row.length < 2) continue; // 确保是双语对照行
+
+                const sourceText = row[0].toLowerCase(); // 第一列（原文）
+                const targetText = row[1].toLowerCase(); // 第二列（译文）
+
+                // 检查关键词是否出现在原文或译文中
+                if (sourceText.includes(keyword) || targetText.includes(keyword)) {
+                    results.push({ source: row[0], target: row[1] });
+                }
+            }
+
+            displayResults(results);
+        }
+
+        // 显示结果
+        function displayResults(results) {
+            const resultsDiv = document.getElementById('results');
+            if (results.length === 0) {
+                resultsDiv.innerHTML = '<p>未找到匹配的结果。</p>';
+                return;
+            }
+
+            let html = '<h2>检索结果：</h2>';
+            results.forEach((result, index) => {
+                html += `<p><strong>原文：</strong>${result.source}<br><strong>译文：</strong>${result.target}</p>`;
+            });
+            resultsDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
